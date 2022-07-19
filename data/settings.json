@@ -1,0 +1,9 @@
+{
+    "led_state" : false,
+    "brightness" : 16,
+    "color" : "#ff0000",
+    "specific_color" : "none",
+    "effect" : "none",
+    "ssid" : "none",
+    "pass" : "none",
+    "ssidAP" : "MyLed"}

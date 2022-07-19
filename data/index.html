@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>MyLed</title>
+</head>
+
+<body>
+    <div>
+        <input id = "toggle_led" type = "checkbox">Toogle LED
+        <br>
+        <input id = "brightness_slider" type = "range" min = "0" max = "32" value="16">Brightness
+        <br>  
+        <input id = "colorpicker" type="color" value="#ff0000">Color
+        <br>
+    </div>
+    <div>
+        <select id = "specific_color_select"> 
+            <option value = "none">none</option>
+            <option value = "rainbow">Rainbow</option>
+            <option value = "red_blue">RedBlue</option>
+        </select>Specific Color Select
+        <br>   
+        <select id = "effect_select"> 
+            <option value = "none">none</option>
+            <option value = "loop">Loop</option>
+            <option value = "rainbow">Rainbow</option>
+            <option value = "fade">Fade</option>
+        </select>Effect Select
+    </div> 
+
+    <script src = "scripts.js"></script>
+</body>
+
+</html>
