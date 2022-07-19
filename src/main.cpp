@@ -219,6 +219,7 @@ void setup() {
     while((WiFi.status() != WL_CONNECTED) && (attempts >= 0)) {
       delay(2000);
       Serial.print(".");
+      attempts--;
     };
     if(WiFi.status() == WL_CONNECTED){
       Serial.println();
@@ -235,7 +236,7 @@ void setup() {
     WiFi.disconnect();
     WiFi.mode(WIFI_AP_STA);
     WiFi.softAPConfig(IPAddress(9,9,9,9), IPAddress(9,9,9,9), IPAddress(255, 255, 255, 0));
-    WiFi.softAP("ssidAP");  
+    WiFi.softAP(ssidAP);  
     Serial.println();
     Serial.print("IP address: ");
     Serial.println(WiFi.softAPIP());
