@@ -1,4 +1,4 @@
-#include "LittleFS.h"
+#include <LittleFS.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
@@ -6,10 +6,20 @@
 #include <GyverTimer.h>
 #include <MyJSONparser.h>
 #include <MyEffectsForWS2812B.h>
+#include <PubSubClient.h>
 
 #define LED_PIN 2
 #define NUM_LEDS 60
 #define DATA_PIN 4
+#define FPS 100
+
+const char *mqtt_server = "134.249.137.151";
+const int mqtt_port = 1883;
+const char *mqtt_user = "";
+const char *mqtt_pass = "";
+
+WiFiClient wclient;
+PubSubClient client(wclient);
 
 CRGB leds[NUM_LEDS];
 MDNSResponder mDNS;
@@ -195,6 +205,32 @@ void setup_saved_settings(){
   MyWS2812B_SetSpecificColor(leds, NUM_LEDS, specific_color);
 }
 
+void callback(char* topic, byte* payload, unsigned int length)  {
+  Serial.print(topic);                
+  Serial.print(" => ");
+  for (int i=0;i<length;i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
+void mqttConnection() {
+  if (WiFi.status() == WL_CONNECTED) { // if wi-fi is connected
+    if (!client.connected()) { // if haven't mqtt connection
+      Serial.println("MQTT - none");
+      String clientId = "ESP8266Client-";
+      clientId += String(random(0xffffffff), HEX);
+      if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
+        Serial.println("MQTT - ok");
+      } else {
+        Serial.println("MQTT - error");   // if not connected
+      }
+    }
+    if (client.connected()) { // if connected
+      client.loop();
+    }
+  }
+}
 
 void setup() {
   autosaveSettingsTimer.stop();
@@ -208,6 +244,9 @@ void setup() {
   setup_saved_settings();
 
   Serial.println(newSettings);
+
+  client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(callback);
 
   //WiFi connect
 
@@ -267,7 +306,8 @@ void loop() {
 
   MyWS2812B_SetEffect(leds, NUM_LEDS, effect);
   FastLED.show();
-  FastLED.delay(50);
+  FastLED.delay(1000 / FPS);
+  mqttConnection();
 
   if (autosaveSettingsTimer.isReady()){
     saveSettings();
