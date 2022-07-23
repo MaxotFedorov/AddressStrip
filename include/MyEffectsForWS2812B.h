@@ -17,3 +17,40 @@ void Effect_Fade(CRGB* leds, int num_leds, String effect);
 
 void SpecificColor_Rainbow(CRGB* leds, int num_leds, String specific_color);
 void SpecificColor_RedBlue(CRGB* leds, int num_leds, String specific_color);
+
+//------------------using oop--------------------
+class Segment {
+    public: 
+        Segment(byte startLed, byte endLed);
+
+        struct color {
+            byte red; 
+            byte green;
+            byte blue;
+        };
+
+        void setRange(byte startLed, byte endLed);
+        void setEffect(String effect);
+        void drawEffect(CRGB *leds);
+        void setColor(String color);
+        color computeColor(String color);
+
+        //-----Effects-----
+        void fillLed(CRGB *leds, byte startPos, byte endPos, byte red, byte green, byte blue);
+        void gradient(CRGB *leds, byte startPos, byte endPos, byte red1, byte green1, byte blue1, byte red2, byte green2, byte blue2);
+    private:
+        byte m_startLed = 0;
+        byte m_endLed = 60;
+        //byte m_brightness = 32;       
+
+        String m_hexColor1 = "";      
+        color m_color1 = {0, 0, 0};
+        String m_hexColor2 = "";
+        color m_color2 = {0, 0, 0};
+
+        String m_effect = "";
+        bool m_reverse = false;
+        bool m_mirrored = false;
+        bool m_onOff = true;
+
+};

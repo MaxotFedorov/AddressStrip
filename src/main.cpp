@@ -6,28 +6,40 @@
 #include <GyverTimer.h>
 #include <MyJSONparser.h>
 #include <MyEffectsForWS2812B.h>
+#include <PubSubClient.h>
 
 #define LED_PIN 2
-#define NUM_LEDS 60
-#define DATA_PIN 4
+#define NUM_LEDS 16
+#define DATA_PIN 2
 #define FPS 100
 
 CRGB leds[NUM_LEDS];
+Segment Segment1(0, NUM_LEDS);
+
 MDNSResponder mDNS;
 ESP8266WebServer server(80);
 GTimer autosaveSettingsTimer(MS, 3000);
 GTimer effectTimer(MS, 50);
 
+WiFiClient wclient;
+PubSubClient client(wclient);
+
 String domain_name = "myled";
 String ssidAP = "";
 String ssid = "";
 String pass = "";
+
 String color = "";
 String specific_color = "";
 String effect = "";
 String brightness = "";
 String ledstate = "";
 String newSettings = "";
+
+const char *mqtt_server = "";
+const int mqtt_port = 1883;
+const char *mqtt_user = "";
+const char *mqtt_pass = "";
 
 void saveSettings(){
   File settings = LittleFS.open("/settings.json", "w");
@@ -230,6 +242,33 @@ void setup_wifi(){
   }
 }
 
+void callback(char* topic, byte* payload, unsigned int length)  {
+  Serial.print(topic);                
+  Serial.print(" => ");
+  for (int i=0;i<length;i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
+void mqttConnection() {
+  if (WiFi.status() == WL_CONNECTED) { // if wi-fi is connected
+    if (!client.connected()) { // if haven't mqtt connection
+      Serial.println("MQTT - none");
+      String clientId = "ESP8266Client-";
+      clientId += String(random(0xffffffff), HEX);
+      if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
+        Serial.println("MQTT - ok");
+      } else {
+        Serial.println("MQTT - error");   // if not connected
+      }
+    }
+
+    if (client.connected()) { // if connected
+      client.loop();
+    }
+  }
+}
 
 void setup() {
   autosaveSettingsTimer.stop();
@@ -244,6 +283,8 @@ void setup() {
 
   //WiFi connect
   setup_wifi();
+  client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(callback);
 
   //Server paths
   server.onNotFound(handle_OnNotFound);
@@ -257,18 +298,24 @@ void setup() {
 
   server.begin();
 
-
   mDNS.addService("http", "tcp", 80);
+
+  
+  Segment1.setEffect("Fill");
+  Segment1.setColor("#ff00ff");
 }
  
 void loop() {
   server.handleClient();
   mDNS.update();
 
-  if(effectTimer.isReady())
-    MyWS2812B_SetEffect(leds, NUM_LEDS, effect);
+  //if(effectTimer.isReady())
+  //  MyWS2812B_SetEffect(leds, NUM_LEDS, effect);
+  Segment1.drawEffect(leds);
   FastLED.show();
   FastLED.delay(1000 / FPS);
+
+  mqttConnection();
 
   if (autosaveSettingsTimer.isReady()){
     saveSettings();
