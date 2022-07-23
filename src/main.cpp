@@ -1,31 +1,24 @@
-#include <LittleFS.h>
+#include "LittleFS.h"
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <FastLED.h>
-#include <GyverTimer.h>
-#include <MyJSONparser.h>
-#include <MyEffectsForWS2812B.h>
-#include <PubSubClient.h>
+#include "GyverTimer.h"
+#include "MyJSONparser.h"
+#include "MyEffectsForWS2812B.h"
 
 #define LED_PIN 2
 #define NUM_LEDS 60
 #define DATA_PIN 4
 #define FPS 100
 
-const char *mqtt_server = "";
-const int mqtt_port = 1883;
-const char *mqtt_user = "";
-const char *mqtt_pass = "";
-
-WiFiClient wclient;
-PubSubClient client(wclient);
-
 CRGB leds[NUM_LEDS];
 MDNSResponder mDNS;
 ESP8266WebServer server(80);
 GTimer autosaveSettingsTimer(MS, 3000);
+GTimer effectTimer(MS, 50);
 
+String domain_name = "myled";
 String ssidAP = "";
 String ssid = "";
 String pass = "";
@@ -152,11 +145,6 @@ void handle_GetSettings(){
 }
 
 //-----------------------------------------
-void handle_WifiSettings(){
-  File setup_wifi_page = LittleFS.open("/setup_wifi_page.html", "r");
-  server.streamFile(setup_wifi_page, "text/html");
-  setup_wifi_page.close();
-}
 void handle_SaveWifiSettings(){
   ssid = server.arg("ssid");
   ssid = "\"" + ssid + "\"";
@@ -205,56 +193,12 @@ void setup_saved_settings(){
   MyWS2812B_SetSpecificColor(leds, NUM_LEDS, specific_color);
 }
 
-void callback(char* topic, byte* payload, unsigned int length)  {
-  Serial.print(topic);                
-  Serial.print(" => ");
-  for (int i=0;i<length;i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-}
-
-void mqttConnection() {
-  if (WiFi.status() == WL_CONNECTED) { // if wi-fi is connected
-    if (!client.connected()) { // if haven't mqtt connection
-      Serial.println("MQTT - none");
-      String clientId = "ESP8266Client-";
-      clientId += String(random(0xffffffff), HEX);
-      if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
-        Serial.println("MQTT - ok");
-      } else {
-        Serial.println("MQTT - error");   // if not connected
-      }
-    }
-    if (client.connected()) { // if connected
-      client.loop();
-    }
-  }
-}
-
-void setup() {
-  autosaveSettingsTimer.stop();
-  pinMode(LED_PIN, OUTPUT);
-  Serial.begin(115200);
-  Serial.println("");
-
-  //Get saved settings
-  LittleFS.begin();
-
-  setup_saved_settings();
-
-  Serial.println(newSettings);
-
-  client.setServer(mqtt_server, mqtt_port);
-  client.setCallback(callback);
-
-  //WiFi connect
-
-  WiFi.begin(ssid, pass);
+void setup_wifi(){
   int enable_softAP = 0;
   int attempts = 5;
   if(!enable_softAP)
   {
+    WiFi.begin(ssid, pass);
     while((WiFi.status() != WL_CONNECTED) && (attempts >= 0)) {
       delay(2000);
       Serial.print(".");
@@ -266,6 +210,8 @@ void setup() {
       Serial.println(ssid);
       Serial.print("IP address: ");
       Serial.println(WiFi.localIP());
+      if (mDNS.begin(domain_name, WiFi.localIP()))
+        Serial.println("MDNS responder started");
     }
     else enable_softAP = 1;
   }
@@ -273,22 +219,34 @@ void setup() {
   if(enable_softAP)
   {
     WiFi.disconnect();
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.softAPConfig(IPAddress(9,9,9,9), IPAddress(9,9,9,9), IPAddress(255, 255, 255, 0));
-    WiFi.softAP(ssidAP);  
+    WiFi.mode(WIFI_AP);
+    //WiFi.softAPConfig(IPAddress(9,9,9,9), IPAddress(9,9,9,9), IPAddress(255, 255, 255, 0));
+    WiFi.softAP(ssidAP); 
     Serial.println();
     Serial.print("IP address: ");
     Serial.println(WiFi.softAPIP());
+    if (mDNS.begin(domain_name, WiFi.softAPIP()))
+      Serial.println("MDNS responder started");
   }
+}
 
-  if (mDNS.begin("myled")) {
-    Serial.println("MDNS responder started");
-  }
 
+void setup() {
+  autosaveSettingsTimer.stop();
+  pinMode(LED_PIN, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("");
+
+  //Get saved settings
+  LittleFS.begin();
+  setup_saved_settings();
+  Serial.println(newSettings);
+
+  //WiFi connect
+  setup_wifi();
 
   //Server paths
   server.onNotFound(handle_OnNotFound);
-  server.on("/wifi_settings", handle_WifiSettings);
   server.on("/save_wifi_settings", handle_SaveWifiSettings);
   server.on("/toggle_led", handle_ToggleLed);
   server.on("/set_brightness", handle_SetBrightness);
@@ -298,16 +256,19 @@ void setup() {
   server.on("/get_settings", handle_GetSettings);
 
   server.begin();
+
+
+  mDNS.addService("http", "tcp", 80);
 }
  
 void loop() {
   server.handleClient();
   mDNS.update();
 
-  MyWS2812B_SetEffect(leds, NUM_LEDS, effect);
+  if(effectTimer.isReady())
+    MyWS2812B_SetEffect(leds, NUM_LEDS, effect);
   FastLED.show();
   FastLED.delay(1000 / FPS);
-  mqttConnection();
 
   if (autosaveSettingsTimer.isReady()){
     saveSettings();
