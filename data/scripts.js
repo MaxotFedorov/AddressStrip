@@ -52,6 +52,10 @@ function set_specific_color(){
     request.open('GET', '/set_specific_color?specific_color=' + specific_color, false);
     request.send();
     console.log(specific_color);
+
+    if(specific_color != "none")
+        document.getElementById("colorpicker").disabled = true;
+    else document.getElementById("colorpicker").disabled = false;
 }
 
 function set_effect(){
@@ -61,3 +65,25 @@ function set_effect(){
     request.send();
     console.log(effect);
 }
+
+
+
+
+document.getElementById("confirm_wifi_settings").addEventListener('click', save_settings);
+
+function save_settings(){
+    var ssid = document.getElementById("ssid").value;
+    var pass = document.getElementById("pass").value;
+    var request = new XMLHttpRequest();
+    request.open('GET', '/save_wifi_settings?ssid=' + ssid + "&pass=" + pass, false);
+
+    alert("Changes saved");
+    request.send();
+
+    console.log(ssid);
+    console.log(pass);
+}
+
+if(specific_color != "none")
+    document.getElementById("colorpicker").disabled = true;
+else document.getElementById("colorpicker").disabled = false;
