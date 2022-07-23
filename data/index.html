@@ -4,32 +4,51 @@
 <head>
     <meta charset="utf-8">
     <title>MyLed</title>
+    <link rel = "stylesheet" href = "styles.css">
 </head>
 
 <body>
     <div>
         <input id = "toggle_led" type = "checkbox">Toogle LED
-        <br>
-        <input id = "brightness_slider" type = "range" min = "0" max = "32" value="16">Brightness
-        <br>  
-        <input id = "colorpicker" type="color" value="#ff0000">Color
-        <br>
     </div>
+    <br>
+    <div>
+        <input id = "brightness_slider" type = "range" min = "0" max = "32" value="16">Brightness
+    </div>
+    <br>
+    </div>  
+        <input id = "colorpicker" type="color" value="#ff0000">Color
+    </div>
+    <br><br><br>
     <div>
         <select id = "specific_color_select"> 
             <option value = "none">none</option>
             <option value = "rainbow">Rainbow</option>
             <option value = "red_blue">RedBlue</option>
         </select>Specific Color Select
-        <br>   
+    </div>
+    <br>
+    <div>  
         <select id = "effect_select"> 
             <option value = "none">none</option>
             <option value = "loop">Loop</option>
             <option value = "rainbow">Rainbow</option>
             <option value = "fade">Fade</option>
         </select>Effect Select
-    </div> 
-
+    </div>
+    <br><br><br>
+    <div>
+        <input id = "ssid" type = "text">SSID
+    </div>
+    <br>
+    <div>
+        <input id = "pass" type = "text">Password
+    </div>
+    <br>
+    <div>
+        <input id = "confirm_wifi_settings" type = "button", value = "Save">
+    </div>
+    <br>
     <script src = "scripts.js"></script>
 </body>
 
