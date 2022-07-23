@@ -1,25 +1,16 @@
-#include <LittleFS.h>
+#include "LittleFS.h"
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <FastLED.h>
-#include <GyverTimer.h>
-#include <MyJSONparser.h>
-#include <MyEffectsForWS2812B.h>
-#include <PubSubClient.h>
+#include "GyverTimer.h"
+#include "MyJSONparser.h"
+#include "MyEffectsForWS2812B.h"
 
 #define LED_PIN 2
 #define NUM_LEDS 60
 #define DATA_PIN 4
 #define FPS 100
-
-const char *mqtt_server = "";
-const int mqtt_port = 1883;
-const char *mqtt_user = "";
-const char *mqtt_pass = "";
-
-WiFiClient wclient;
-PubSubClient client(wclient);
 
 CRGB leds[NUM_LEDS];
 MDNSResponder mDNS;
@@ -154,11 +145,6 @@ void handle_GetSettings(){
 }
 
 //-----------------------------------------
-void handle_WifiSettings(){
-  File setup_wifi_page = LittleFS.open("/setup_wifi_page.html", "r");
-  server.streamFile(setup_wifi_page, "text/html");
-  setup_wifi_page.close();
-}
 void handle_SaveWifiSettings(){
   ssid = server.arg("ssid");
   ssid = "\"" + ssid + "\"";
@@ -208,76 +194,6 @@ void setup_saved_settings(){
 }
 
 void setup_wifi(){
-  int enable_softAP = 0;
-  int attempts = 5;
-  if(!enable_softAP)
-  {
-    WiFi.begin(ssid, pass);
-    while((WiFi.status() != WL_CONNECTED) && (attempts >= 0)) {
-      delay(2000);
-      Serial.print(".");
-      attempts--;
-    };
-    if(WiFi.status() == WL_CONNECTED){
-      Serial.println();
-      Serial.print("Connected to ");
-      Serial.println(ssid);
-      Serial.print("IP address: ");
-      Serial.println(WiFi.localIP());
-      if (mDNS.begin(domain_name, WiFi.localIP()))
-        Serial.println("MDNS responder started");
-    }
-    else enable_softAP = 1;
-  }
-
-}
-
-void callback(char* topic, byte* payload, unsigned int length)  {
-  Serial.print(topic);                
-  Serial.print(" => ");
-  for (int i=0;i<length;i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-}
-
-void mqttConnection() {
-  if (WiFi.status() == WL_CONNECTED) { // if wi-fi is connected
-    if (!client.connected()) { // if haven't mqtt connection
-      Serial.println("MQTT - none");
-      String clientId = "ESP8266Client-";
-      clientId += String(random(0xffffffff), HEX);
-      if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
-        Serial.println("MQTT - ok");
-      } else {
-        Serial.println("MQTT - error");   // if not connected
-      }
-    }
-    if (client.connected()) { // if connected
-      client.loop();
-    }
-  }
-}
-
-void setup() {
-  autosaveSettingsTimer.stop();
-  pinMode(LED_PIN, OUTPUT);
-  Serial.begin(115200);
-  Serial.println("");
-
-  //Get saved settings
-  LittleFS.begin();
-
-  setup_saved_settings();
-
-  Serial.println(newSettings);
-
-  client.setServer(mqtt_server, mqtt_port);
-  client.setCallback(callback);
-
-  //WiFi connect
-
-  WiFi.begin(ssid, pass);
   int enable_softAP = 0;
   int attempts = 5;
   if(!enable_softAP)
@@ -353,7 +269,6 @@ void loop() {
     MyWS2812B_SetEffect(leds, NUM_LEDS, effect);
   FastLED.show();
   FastLED.delay(1000 / FPS);
-  mqttConnection();
 
   if (autosaveSettingsTimer.isReady()){
     saveSettings();
