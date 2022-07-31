@@ -54,3 +54,10 @@ class Segment {
         bool m_onOff = true;
 
 };
+
+class LedStrip {
+    public:
+        
+    private: 
+        byte m_segmentNum = 0;
+};

@@ -8,13 +8,17 @@
 #include <MyEffectsForWS2812B.h>
 #include <PubSubClient.h>
 
-#define LED_PIN 2
-#define NUM_LEDS 16
+#define LED_PIN 4
+#define NUM_LEDS 32
 #define DATA_PIN 2
 #define FPS 100
+#define COLOR_ORDER RGB
+#define LED_TYPE WS2811
 
 CRGB leds[NUM_LEDS];
-Segment Segment1(0, NUM_LEDS);
+Segment Segment1(0, NUM_LEDS/2);
+Segment Segment2(NUM_LEDS/2 + 1, NUM_LEDS);
+
 
 MDNSResponder mDNS;
 ESP8266WebServer server(80);
@@ -50,7 +54,7 @@ void saveSettings(){
   autosaveSettingsTimer.stop();
 }
 
-void set_saved_color()
+void setSavedColor()
 {
   unsigned int icolor = 0;
   for(unsigned int i = 2; i < color.length() - 1; i++)
@@ -64,7 +68,7 @@ void set_saved_color()
     leds[i] = icolor;
 }
 
-//Server handlers
+//----------Server handlers----------
 
 String getContentType(String filename){                                
   if (filename.endsWith(".html")) return "text/html";                   
@@ -89,13 +93,12 @@ bool handleFileRead(String path){
   return false;                                                         
 }
 
-
-void handle_OnNotFound(){
+void handleOnNotFound(){
   if(!handleFileRead(server.uri()))                                       
       server.send(404, "text/plain", "Not Found");
 }
 
-void handle_ToggleLed(){
+void handleToggleLed(){
   ledstate = server.arg("state");
   if(ledstate == "true")
     digitalWrite(LED_PIN, 0);
@@ -105,7 +108,7 @@ void handle_ToggleLed(){
   autosaveSettingsTimer.start();
 }
 
-void handle_SetBrightness(){
+void handleSetBrightness(){
   brightness = server.arg("brightness");
   FastLED.setBrightness(brightness.toInt());
   MyJSONparser_set_value("brightness", brightness);  
@@ -113,21 +116,21 @@ void handle_SetBrightness(){
   autosaveSettingsTimer.start();
 }
 
-void handle_SetColor(){
+void handleSetColor(){
   color = server.arg("color");
   color = "\"#" + color + "\"";
-  set_saved_color();
+  setSavedColor();
 
   MyJSONparser_set_value("color", color);
   server.send(200, "text/plain", color);
   autosaveSettingsTimer.start();
 }
 
-void handle_SetSpecificColor(){
+void handleSetSpecificColor(){
   specific_color = server.arg("specific_color");
   specific_color = "\"" + specific_color + "\"";
   if(specific_color == "\"none\"")
-    set_saved_color();
+    setSavedColor();
 
   MyWS2812B_SetSpecificColor(leds, NUM_LEDS, specific_color);
   MyJSONparser_set_value("specific_color", specific_color);
@@ -135,12 +138,12 @@ void handle_SetSpecificColor(){
   autosaveSettingsTimer.start();
 }
 
-void handle_SetEffect(){
+void handleSetEffect(){
   effect = server.arg("effect");
   effect = "\"" + effect + "\"";
   if((effect == "\"none\""))
   {
-    set_saved_color();
+    setSavedColor();
     MyWS2812B_SetSpecificColor(leds, NUM_LEDS, specific_color);
     FastLED.setBrightness(brightness.toInt());
   }
@@ -150,14 +153,14 @@ void handle_SetEffect(){
 }
 
 
-void handle_GetSettings(){
+void handleGetSettings(){
   File settings = LittleFS.open("/settings.json", "r");
   server.streamFile(settings, "application/json");
   settings.close();
 }
 
 //-----------------------------------------
-void handle_SaveWifiSettings(){
+void handleSaveWifiSettings(){
   ssid = server.arg("ssid");
   ssid = "\"" + ssid + "\"";
   pass = server.arg("pass");
@@ -169,7 +172,7 @@ void handle_SaveWifiSettings(){
   ESP.restart();
 }
 
-void setup_saved_settings(){
+void setupSavedSettings(){
   File settings = LittleFS.open("/settings.json", "r");
   while(settings.available())
     newSettings += (char)settings.read();
@@ -201,7 +204,7 @@ void setup_saved_settings(){
   else
     digitalWrite(LED_PIN, 1);
     
-  set_saved_color();
+  setSavedColor();
   MyWS2812B_SetSpecificColor(leds, NUM_LEDS, specific_color);
 }
 
@@ -275,10 +278,11 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   Serial.begin(115200);
   Serial.println("");
+  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 
   //Get saved settings
   LittleFS.begin();
-  setup_saved_settings();
+  setupSavedSettings();
   Serial.println(newSettings);
 
   //WiFi connect
@@ -287,14 +291,14 @@ void setup() {
   client.setCallback(callback);
 
   //Server paths
-  server.onNotFound(handle_OnNotFound);
-  server.on("/save_wifi_settings", handle_SaveWifiSettings);
-  server.on("/toggle_led", handle_ToggleLed);
-  server.on("/set_brightness", handle_SetBrightness);
-  server.on("/set_color", handle_SetColor);
-  server.on("/set_specific_color", handle_SetSpecificColor);
-  server.on("/set_effect", handle_SetEffect);
-  server.on("/get_settings", handle_GetSettings);
+  server.onNotFound(handleOnNotFound);
+  server.on("/save_wifi_settings", handleSaveWifiSettings);
+  server.on("/toggle_led", handleToggleLed);
+  server.on("/set_brightness", handleSetBrightness);
+  server.on("/set_color", handleSetColor);
+  server.on("/set_specific_color", handleSetSpecificColor);
+  server.on("/set_effect", handleSetEffect);
+  server.on("/get_settings", handleGetSettings);
 
   server.begin();
 
@@ -315,7 +319,7 @@ void loop() {
   FastLED.show();
   FastLED.delay(1000 / FPS);
 
-  mqttConnection();
+  //mqttConnection();
 
   if (autosaveSettingsTimer.isReady()){
     saveSettings();
