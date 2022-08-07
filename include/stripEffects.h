@@ -46,7 +46,7 @@ class Segment {
         String m_hexColor1 = "";      
         color m_color1 = {0, 0, 0};
         String m_hexColor2 = "";
-        color m_color2 = {0, 0, 0};
+        color m_color2 = {255, 0, 255};
 
         String m_effect = "";
         bool m_reverse = false;

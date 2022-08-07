@@ -1,4 +1,4 @@
-#include "MyEffectsForWS2812B.h"
+#include "stripEffects.h"
 
 void MyWS2812B_SetSpecificColor(CRGB* leds, int num_leds, String specific_color){
     if(specific_color == COLOR_RAINBOW)

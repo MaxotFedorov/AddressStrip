@@ -5,8 +5,8 @@
 #include <FastLED.h>
 #include <GyverTimer.h>
 #include <MyJSONparser.h>
-#include <MyEffectsForWS2812B.h>
-#include <PubSubClient.h>
+#include <stripEffects.h>
+#include <mqtt.h>
 
 #define LED_PIN 4
 #define NUM_LEDS 32
@@ -16,13 +16,11 @@
 #define LED_TYPE WS2811
 
 CRGB leds[NUM_LEDS];
-Segment Segment1(0, NUM_LEDS/2);
-Segment Segment2(NUM_LEDS/2 + 1, NUM_LEDS);
-
+Segment Segment1(0, NUM_LEDS);
 
 MDNSResponder mDNS;
 ESP8266WebServer server(80);
-GTimer autosaveSettingsTimer(MS, 3000);
+GTimer autoSaveSettingsTimer(MS, 3000);
 GTimer effectTimer(MS, 50);
 
 WiFiClient wclient;
@@ -51,7 +49,7 @@ void saveSettings(){
   settings.print(newSettings);
   settings.close();
   Serial.println(newSettings);
-  autosaveSettingsTimer.stop();
+  autoSaveSettingsTimer.stop();
 }
 
 void setSavedColor()
@@ -66,6 +64,8 @@ void setSavedColor()
   }
   for(int i = 0; i < NUM_LEDS; i++)
     leds[i] = icolor;
+
+  Segment1.setColor(color.substring(1, 7));
 }
 
 //----------Server handlers----------
@@ -105,7 +105,7 @@ void handleToggleLed(){
   else digitalWrite(LED_PIN, 1);
   MyJSONparser_set_value("led_state", ledstate);
   server.send(200, "text/plain", ledstate);
-  autosaveSettingsTimer.start();
+  autoSaveSettingsTimer.start();
 }
 
 void handleSetBrightness(){
@@ -113,17 +113,18 @@ void handleSetBrightness(){
   FastLED.setBrightness(brightness.toInt());
   MyJSONparser_set_value("brightness", brightness);  
   server.send(200, "text/plain", brightness);
-  autosaveSettingsTimer.start();
+  autoSaveSettingsTimer.start();
 }
 
 void handleSetColor(){
   color = server.arg("color");
+  //Segment1.setColor("#" + color);
   color = "\"#" + color + "\"";
-  setSavedColor();
+  setSavedColor();  
 
   MyJSONparser_set_value("color", color);
   server.send(200, "text/plain", color);
-  autosaveSettingsTimer.start();
+  autoSaveSettingsTimer.start();
 }
 
 void handleSetSpecificColor(){
@@ -135,7 +136,7 @@ void handleSetSpecificColor(){
   MyWS2812B_SetSpecificColor(leds, NUM_LEDS, specific_color);
   MyJSONparser_set_value("specific_color", specific_color);
   server.send(200, "text/plain", specific_color);
-  autosaveSettingsTimer.start();
+  autoSaveSettingsTimer.start();
 }
 
 void handleSetEffect(){
@@ -149,7 +150,7 @@ void handleSetEffect(){
   }
   MyJSONparser_set_value("effect", effect);
   server.send(200, "text/plain", effect);
-  autosaveSettingsTimer.start();
+  autoSaveSettingsTimer.start();
 }
 
 
@@ -208,7 +209,7 @@ void setupSavedSettings(){
   MyWS2812B_SetSpecificColor(leds, NUM_LEDS, specific_color);
 }
 
-void setup_wifi(){
+void setupWifi(){
   int enable_softAP = 0;
   int attempts = 5;
   if(!enable_softAP)
@@ -245,15 +246,6 @@ void setup_wifi(){
   }
 }
 
-void callback(char* topic, byte* payload, unsigned int length)  {
-  Serial.print(topic);                
-  Serial.print(" => ");
-  for (int i=0;i<length;i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-}
-
 void mqttConnection() {
   if (WiFi.status() == WL_CONNECTED) { // if wi-fi is connected
     if (!client.connected()) { // if haven't mqtt connection
@@ -274,7 +266,7 @@ void mqttConnection() {
 }
 
 void setup() {
-  autosaveSettingsTimer.stop();
+  autoSaveSettingsTimer.stop();
   pinMode(LED_PIN, OUTPUT);
   Serial.begin(115200);
   Serial.println("");
@@ -286,7 +278,7 @@ void setup() {
   Serial.println(newSettings);
 
   //WiFi connect
-  setup_wifi();
+  setupWifi();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
 
@@ -321,7 +313,7 @@ void loop() {
 
   //mqttConnection();
 
-  if (autosaveSettingsTimer.isReady()){
+  if (autoSaveSettingsTimer.isReady()){
     saveSettings();
   }
 }
